@@ -21,7 +21,8 @@ SoftwareSerial sendSerial = SoftwareSerial(5, 6); //Rx, Tx
 
 int ECUbytes[7] = {0, 0, 0, 0, 0, 0, 0};
 //                                      |rpm - 2 bytes| tmp |  spd |  swt | gear   | tps |
-//byte ReqRPM[28] = {128,16,240,23,168,0,0,0,15,0,0,14,0,0,8,0,0,16,0,1,33,255,83,5,0,0,21,2}; // add throttle
+byte ReqData[28] = {128,16,240,23,168,0,0,0,15,0,0,14,0,0,8,0,0,16,0,1,33,255,83,5,0,0,21,2}; // add throttle
+byte ReqDataSize = 28;
 int RRPM;
 int BRAKE;
 int CLUTCH;
@@ -29,10 +30,14 @@ int TPS;
 int MPH;
 int TMP;
 int GEAR;
+int SerialStatus=0;
+int milli;
+int ClrToSnd;
 
 
-byte ReqRPM[13] = {128,16,240,8,168,0,0,0,15,0,0,14,77};
-int readDelay = 1;
+//byte ReqData[13] = {128,16,240,8,168,0,0,0,15,0,0,14,77};
+//byte ReqDataSize = 13;
+int readDelay = 2;
 unsigned long prvTime;
 unsigned long curTime;
 
@@ -54,66 +59,75 @@ void setup()
   delay(50);
   Serial.println("Setup Complete");
   delay(50);
+  writeSSM(ReqData, ReqDataSize, sendSerial);
+  delay (2);
 }
 
 void loop()
 {
 curTime = millis();
-int milli=curTime - prvTime;
-prvTime = curTime;
+milli=curTime - prvTime;  
 
-writeSSM(ReqRPM, 13, sendSerial);
-  if (readECU(ECUbytes, 7, false))
-  { 
-  RRPM = (ECUbytes[0] | (ECUbytes[1] << 8)) /4.0;  
-  CLUTCH = ((ECUbytes[4] & 0x80) >> 7);
-  BRAKE = ((ECUbytes[4] & 0x40) >> 6);
-  TPS = ((ECUbytes[6] * 100) / 255);
-  MPH = (ECUbytes[3] * 0.621371192);
-  TMP = ((32+9*(ECUbytes[2]-40))/5);
-  if (CLUTCH == 1) {
-    GEAR=0;
-  }else{
-    GEAR=ECUbytes[5];
-  }
-  Serial.print("RPM: ");
-  Serial.print(RRPM);
-  Serial.print("    ");
-  Serial.print("SPEED: ");
-  Serial.print(MPH);
-  Serial.print("    ");
-  Serial.print("TEMP: ");
-  Serial.print(TMP);
-  Serial.print("    ");
-  Serial.print("Brake:");
-  Serial.print(BRAKE);
-  Serial.print("    ");
-  Serial.print("Clutch::");
-  Serial.print(CLUTCH);
-  Serial.print("    ");
-  Serial.print("GEAR:");
-  Serial.print(GEAR);
-  Serial.print("    ");
-  Serial.print("Throtle: ");
-  Serial.print("    ");
-  Serial.print(TPS);
-  Serial.print("    ");
-  Serial.print("Millis: ");
-  Serial.println(milli);
-  
-  RPMmessage(ECUbytes[0],ECUbytes[1]);
-  delay(3);
-  SPEEDmesage(MPH);
-  delay(3);
-  TMPmessage(TMP);
-  delay(3);
-  SWITCHmessage(BRAKE,CLUTCH);
-  delay(3);
-  GEARmessage(GEAR);
-  delay(3);
-  TPSmessage(TPS);
+if (milli > 250) {
+  sendSerial.flush();
+  //delay(5);
+  writeSSM(ReqData, ReqDataSize, sendSerial);
+  Serial.println("Timer Popped");
+  prvTime=millis();
   }
 
+  if (sendSerial.available()) {  
+    readECU(ECUbytes, 7, false);
+    
+    prvTime = curTime;
+
+    RRPM = (ECUbytes[0] | (ECUbytes[1] << 8)) /4.0;  
+    CLUTCH = ((ECUbytes[4] & 0x80) >> 7); 
+    BRAKE = ((ECUbytes[4] & 0x40) >> 6);
+    TPS = ((ECUbytes[6] * 100) / 255);
+    MPH = (ECUbytes[3] * 0.621371192);
+    TMP = ((32+9*(ECUbytes[2]-40))/5);
+    if (CLUTCH == 1) {
+      GEAR=0;
+    }else{
+      GEAR=ECUbytes[5];
+    }
+
+    CAN2RCP1(ECUbytes[0],ECUbytes[1], MPH, TPS);
+    delay(1);
+    CAN2RCP2(BRAKE, CLUTCH, GEAR, TMP);
+    
+    Serial.print("RPM: ");
+    Serial.print(RRPM);
+    Serial.print("    ");
+    Serial.print("SPEED: ");
+    Serial.print(MPH);
+    Serial.print("    ");
+    Serial.print("TEMP: ");
+    Serial.print(TMP);
+    Serial.print("    ");
+    Serial.print("Brake:");
+    Serial.print(BRAKE);
+    Serial.print("    ");
+    Serial.print("Clutch::");
+    Serial.print(CLUTCH);
+    Serial.print("    ");
+    Serial.print("GEAR:");
+    Serial.print(GEAR);
+    Serial.print("    ");
+    Serial.print("Throtle: ");
+    Serial.print("    ");
+    Serial.print(TPS);
+    Serial.print("    ");
+    Serial.print("Millis: ");
+    Serial.println(milli);
+    //delay(20);    
+    }
+    
+    if (ClrToSnd == 0) {
+      writeSSM(ReqData, ReqDataSize, sendSerial);
+      ClrToSnd = 1;
+    }
 }
 
 /* returns the 8 least significant bits of an input byte*/
@@ -147,7 +161,7 @@ boolean readECU(int* dataArray, byte dataArrayLength, boolean nonZeroes)
   byte dataSize = 0;
   byte bytePlace = 0;
   byte zeroesLoopSpot = 0;
-  byte loopLength = 10;
+  byte loopLength = 20;
   for (byte j = 0; j < loopLength; j++)
   {
     data = sendSerial.read();
@@ -166,8 +180,8 @@ boolean readECU(int* dataArray, byte dataArrayLength, boolean nonZeroes)
     }
 
     if (isPacket == true && data != -1) {
-      Serial.print(data); // for debugging: shows in-packet data
-      Serial.print(" ");
+  //    Serial.print(data); // for debugging: shows in-packet data
+  //    Serial.print(" ");
 
       if (bytePlace == 3) { // how much data is coming
         dataSize = data;
@@ -198,6 +212,7 @@ boolean readECU(int* dataArray, byte dataArrayLength, boolean nonZeroes)
           return false;
         }
 //        Serial.println("Checksum is good");
+        ClrToSnd = 0;
         isPacket = false;
         sumBytes = 0;
         bytePlace = 0;
@@ -214,75 +229,33 @@ boolean readECU(int* dataArray, byte dataArrayLength, boolean nonZeroes)
   }
 }
 
-void RPMmessage(byte Rpm1, byte Rpm2)
+void CAN2RCP1(byte Rpm1, byte Rpm2, byte Kph, byte Tps)
 {
   CAN_Frame standard_message; // Create message object to use CAN message structure
   standard_message.id = 0x259; // 601
   standard_message.valid = true;
   standard_message.rtr = 0;
   standard_message.extended = CAN_STANDARD_FRAME;
-  standard_message.length = 5; // Data length
-  standard_message.data[1] = Rpm1;
-  standard_message.data[2] = Rpm2;
+  standard_message.length = 4; // Data length
+  standard_message.data[0] = Rpm1;
+  standard_message.data[1] = Rpm2;
+  standard_message.data[2] = Kph;
+  standard_message.data[3] = Tps;
   CAN.write(standard_message); // Load message and send
 }
 
-void SPEEDmesage(byte Kph)
+void CAN2RCP2(byte Brk, byte Clu, byte Ger, byte Tmp)
 {
   CAN_Frame standard_message; // Create message object to use CAN message structure
-  standard_message.id = 0x25A; // 602
+  standard_message.id = 0x25A; // 601
   standard_message.valid = true;
   standard_message.rtr = 0;
   standard_message.extended = CAN_STANDARD_FRAME;
-  standard_message.length = 5; // Data length
-  standard_message.data[1] = Kph;
+  standard_message.length = 4; // Data length
+  standard_message.data[0] = Brk;
+  standard_message.data[1] = Clu;
+  standard_message.data[2] = Ger;
+  standard_message.data[3] = Tmp;
   CAN.write(standard_message); // Load message and send
 }
 
-void TMPmessage(byte Tmp)
-{
-  CAN_Frame standard_message; // Create message object to use CAN message structure
-
-  standard_message.id = 0x25B; // 603
-  standard_message.valid = true;
-  standard_message.rtr = 0;
-  standard_message.extended = CAN_STANDARD_FRAME;
-  standard_message.length = 5; // Data length
-  standard_message.data[1] = Tmp;
-  CAN.write(standard_message); // Load message and send
-}
-void SWITCHmessage(byte Brk, byte Clu)
-{
-  CAN_Frame standard_message; // Create message object to use CAN message structure
-  standard_message.id = 0x25C; // 604
-  standard_message.valid = true;
-  standard_message.rtr = 0;
-  standard_message.extended = CAN_STANDARD_FRAME;
-  standard_message.length = 5; // Data length
-  standard_message.data[1] = Brk; // Brake
-  standard_message.data[2] = Clu; // Clutch
-  CAN.write(standard_message); // Load message and send
-}
-void GEARmessage(byte Ger)
-{
-  CAN_Frame standard_message; // Create message object to use CAN message structure
-  standard_message.id = 0x25D; // 605
-  standard_message.valid = true;
-  standard_message.rtr = 0;
-  standard_message.extended = CAN_STANDARD_FRAME;
-  standard_message.length = 5; // Data length
-  standard_message.data[1] = Ger; 
-  CAN.write(standard_message); // Load message and send
-}
-
-void TPSmessage(byte Tps)
-{
-  CAN_Frame standard_message; // Create message object to use CAN message structure
-  standard_message.id = 0x25E; // 606
-  standard_message.valid = true;
-  standard_message.rtr = 0;
-  standard_message.extended = CAN_STANDARD_FRAME;
-  standard_message.length = 5; // Data length
-  standard_message.data[1] = Tps; 
-  CAN.write(standard_message); // Load message and send
-}
