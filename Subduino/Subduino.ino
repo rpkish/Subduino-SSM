@@ -87,10 +87,8 @@ if (milli > 250) {
     TPS = ((ECUbytes[6] * 100) / 255);
     MPH = (ECUbytes[3] * 0.621371192);
     TMP = ((32+9*(ECUbytes[2]-40))/5);
-    if (CLUTCH == 1) {
+    if (CLUTCH == 1 || MPH == 0) {
       GEAR=0;
-    }else{
-      GEAR=ECUbytes[5];
     }
 
     CAN2RCP1(ECUbytes[0],ECUbytes[1], MPH, TPS);
