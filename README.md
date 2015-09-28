@@ -7,6 +7,8 @@ This application uses Open Source components. You can find the source code of th
 Project: WRXClockPodMod https://drive.google.com/file/d/0ByGxElIxzv3deE43MzN4OHZIa1k/view
 Verion: 2
 
+Relevant thread on ClubWRX.net: http://www.clubwrx.net/forums/tutorials-diy/134423369-clock-pod-mod-subarb-select-monitor-ecu-polling-arduino.html
+
 #Theory of operation
 
 For the most part, Subaru's built prior to 2008 do not have CanBus. There are of course expections, however, the main system to log data from pre-canbus ECU's is the Subaru Select Monitor. This project implements monitoring for several parameters, and then transmitts that data over a canbus.
