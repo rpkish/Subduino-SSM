@@ -1,6 +1,12 @@
 # Subduino-SSM
 Subaru Select Monitor to Canbus adapter
 
+#Credits
+This application uses Open Source components. You can find the source code of their open source projects. We acknowledge and are grateful to these developers for their contributions to open source.
+
+Project: WRXClockPodMod https://drive.google.com/file/d/0ByGxElIxzv3deE43MzN4OHZIa1k/view
+Verion: 2
+
 #Theory of operation
 
 For the most part, Subaru's built prior to 2008 do not have CanBus. There are of course expections, however, the main system to log data from pre-canbus ECU's is the Subaru Select Monitor. This project implements monitoring for several parameters, and then transmitts that data over a canbus.
