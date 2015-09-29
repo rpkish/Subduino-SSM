@@ -2,7 +2,7 @@
 Subaru Select Monitor to Canbus adapter
 
 #Credits
-This application uses Open Source components. You can find the source code of their open source projects. We acknowledge and are grateful to these developers for their contributions to open source.
+This application carries the GNU General Public License and uses Open Source components. You can find the source code of their open source projects. I acknowledge and are grateful to these developers for their contributions to open source.
 
 Project: WRXClockPodMod https://drive.google.com/file/d/0ByGxElIxzv3deE43MzN4OHZIa1k/view
 Verion: 2
